@@ -8,6 +8,7 @@ class SVector(val vector: SparseVector[Double]) {
   def minus(that: SVector): SVector = new SVector(this.vector - that.vector)
   def times(i: Double): SVector = new SVector(this.vector * i)
   def add(that: SVector): Unit = this.vector += that.vector
+  def add(i: Double, that: SVector): Unit = this.vector += that.vector * i
   def subtract(that: SVector): Unit = this.vector -= that.vector
   def scale(i: Double): Unit = this.vector *= i
   def dot(that: SVector): Double = this.vector.dot(that.vector)
