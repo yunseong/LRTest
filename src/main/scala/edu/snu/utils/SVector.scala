@@ -1,3 +1,5 @@
+package edu.snu.utils
+
 import breeze.linalg.SparseVector
 
 class SVector(val vector: SparseVector[Double]) {

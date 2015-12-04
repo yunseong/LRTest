@@ -1,4 +1,7 @@
-import org.apache.mahout.math.SequentialAccessSparseVector;
+package edu.snu.utils;
+
+import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.sparse.SparseVector;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -7,7 +10,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class TestMahout {
+public class TestMTJ {
 
   private static int dimension;
 
@@ -15,42 +18,37 @@ public class TestMahout {
     dimension = Integer.valueOf(args[1]);
     File dataFile = new File(args[0]);
     BufferedReader bufferedReader = null;
-    ArrayList<MahoutRow> rows = new ArrayList<MahoutRow>();
+    ArrayList<MTJRow> rows = new ArrayList<MTJRow>();
     try {
       bufferedReader = new BufferedReader(new FileReader(dataFile));
       String s = bufferedReader.readLine();
       while (s != null) {
         final String[] split = s.split("\\s+");
-        final MahoutRow row = new MahoutRow(Integer.valueOf(split[0]), parseFeatureVector(Arrays.copyOfRange(split, 1, split.length)));
+        final MTJRow row = new MTJRow(Integer.valueOf(split[0]), parseFeatureVector(Arrays.copyOfRange(split, 1, split.length)));
         rows.add(row);
         s = bufferedReader.readLine();
       }
-    } catch (Exception e) {
-      throw e;
     } finally {
       if (bufferedReader != null) {
         bufferedReader.close();
       }
     }
 
-    org.apache.mahout.math.Vector model = new SequentialAccessSparseVector(dimension + 1);
+    DenseVector model = new DenseVector(dimension + 1);
 
     for (int i = 0; i < 5; i++) {
       long iterationStart = System.currentTimeMillis();
-      for (final MahoutRow row : rows) {
-        final double output = row.getOutput();
-        final org.apache.mahout.math.Vector input = row.getFeature();
-        final org.apache.mahout.math.Vector gradient = MahoutLogisticLoss.gradient(input, model.dot(input), output).plus(model.times(0.1));
-        model = model.minus(gradient.times(0.00001));
+      for (final MTJRow row : rows) {
+        MTJLogisticLoss.gradientDescent(row.getFeature(), row.getOutput(), model);
       }
       System.out.println("Iteration " + i + " took " + (System.currentTimeMillis() - iterationStart) + "ms");
 
       long accuracyStart = System.currentTimeMillis();
       int posNum = 0;
       int negNum = 0;
-      for (final MahoutRow row : rows) {
+      for (final MTJRow row : rows) {
         final double output = row.getOutput();
-        final double predict = model.dot(row.getFeature());
+        final double predict = row.getFeature().dot(model);
         if (output * predict > 0) {
           posNum++;
         } else {
@@ -74,22 +72,22 @@ public class TestMahout {
     }
   }
 
-  private static org.apache.mahout.math.Vector parseFeatureVector(final String[] split) {
-    final org.apache.mahout.math.Vector ret = new SequentialAccessSparseVector(dimension + 1, split.length + 1); // +1 for a constant term
+  private static SparseVector parseFeatureVector(final String[] split) {
+    final SparseVector ret = new SparseVector(dimension + 1, split.length + 1); // +1 for a constant term
     for (final String elementString : split) {
       final AbstractMap.SimpleEntry<Integer, Double> elementPair = parseElement(elementString);
       ret.set(elementPair.getKey(), elementPair.getValue());
     }
-    ret.set(dimension, 1); // a constant term
+    ret.set(dimension, 1.0); // a constant term
     return ret;
   }
 }
 
-final class MahoutRow {
+final class MTJRow {
   private final double output;
-  private final org.apache.mahout.math.Vector feature;
+  private final SparseVector feature;
 
-  public MahoutRow(final double output, final org.apache.mahout.math.Vector feature) {
+  public MTJRow(final double output, final SparseVector feature) {
     this.output = output;
     this.feature = feature;
   }
@@ -98,19 +96,23 @@ final class MahoutRow {
     return output;
   }
 
-  public org.apache.mahout.math.Vector getFeature() {
+  public SparseVector getFeature() {
     return feature;
   }
 }
 
-final class MahoutLogisticLoss {
+final class MTJLogisticLoss {
+  private static final double stepSize = 0.00001;
+  private static final double lambda = 0.1;
 
-  public static org.apache.mahout.math.Vector gradient(final org.apache.mahout.math.Vector feature, final double predict, final double output) {
+  public static void gradientDescent(final SparseVector feature, final double output, final DenseVector model) {
 
     // http://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/
-    final double exponent = -predict * output;
+    final double exponent = -feature.dot(model) * output;
     final double maxExponent = Math.max(exponent, 0);
     final double logSumExp = maxExponent + Math.log(Math.exp(-maxExponent) + Math.exp(exponent - maxExponent));
-    return feature.times(output * (Math.exp(-logSumExp) - 1));
+    final double multiplier = output * (Math.exp(-logSumExp) - 1);
+    model.scale(1.0 - stepSize * lambda);
+    model.add(-stepSize * multiplier, feature);
   }
 }

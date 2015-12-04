@@ -1,3 +1,5 @@
+package edu.snu.utils;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -107,7 +109,7 @@ final class LogisticLoss {
     final double maxExponent = Math.max(exponent, 0);
     final double logSumExp = maxExponent + Math.log(Math.exp(-maxExponent) + Math.exp(exponent - maxExponent));
     final double multiplier = output * (Math.exp(-logSumExp) - 1);
-    model.scale(1.0 - stepSize * lambda);
+//    model.scale(1.0 - stepSize * lambda);
     model.add(-stepSize * multiplier, feature);
   }
 }

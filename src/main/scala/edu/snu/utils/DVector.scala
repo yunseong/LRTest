@@ -1,3 +1,5 @@
+package edu.snu.utils
+
 import breeze.linalg.DenseVector
 
 class DVector(val vector: DenseVector[Double]) {
